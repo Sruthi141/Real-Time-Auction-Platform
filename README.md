@@ -1,4 +1,4 @@
-🛒 Real-Time Auction Platform
+##🛒 Real-Time Auction Platform
 📌 Overview
 This is a real-time auction web application that allows users to bid on items dynamically, with role-based access for users, sellers, and administrators. It features real-time updates using WebSocket technology, a secure email verification process, and a clean architecture with separate front-end and back-end services.
 
