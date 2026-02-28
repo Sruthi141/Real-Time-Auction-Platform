@@ -5,7 +5,7 @@ let client;
 
 function getRedisClient() {
   if (!client) {
-    const url = process.env.REDIS_URL || "rediss://default:AYEYAAIjcDEyMmVmMzk1MDJiZTE0NzQzODk5NTk3M2UxMWE1M2NiZnAxMA@absolute-guppy-33048.upstash.io:6379";
+    const url = process.env.REDIS_URL ;
     client = createClient({ url });
 
     client.on('error', (err) => console.error('Redis Client Error', err));

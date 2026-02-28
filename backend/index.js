@@ -75,7 +75,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("uploads"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-const mongoUri = process.env.MONGO_URI || "mongodb+srv://Real-Time-Auction:R9h7WYanHAyhdsJr@cluster2.pgdmtkb.mongodb.net/?appName=Cluster2";
+const mongoUri = process.env.MONGO_URI;
 mongoose.connect(mongoUri)
   .then(() => {
     console.log("MongoDB Connected");

@@ -1,7 +1,9 @@
 const mongoose = require("mongoose");
-mongoose.connect(" mongodb+srv://Real-Time-Auction:R9h7WYanHAyhdsJr@cluster2.pgdmtkb.mongodb.net/?appName=Cluster2").then(() => {
+require("dotenv").config();
+mongoose.connect(process.env.MONGO_URI).then(()=>{
     console.log("MongoDB Connected");
 });
+
 
 const SellerModel = require("./models/sellermodel");
 
