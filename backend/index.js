@@ -44,7 +44,7 @@ const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.1.0/swagger
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:4000',
-  'https://fdfed-iota.vercel.app',
+  'https://real-time-auction-platform-sruthi.vercel.app',
   'https://fdfed-2-server.vercel.app'
 ];
 
