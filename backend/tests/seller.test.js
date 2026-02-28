@@ -33,7 +33,7 @@ let itemId = null;
 
 beforeAll(async () => {
     try {
-      await mongoose.connect("mongodb+srv://koushik:koushik@cluster0.h2lzgvs.mongodb.net/test_wbd", {
+      await mongoose.connect("mongodb+srv://Real-Time-Auction:R9h7WYanHAyhdsJr@cluster2.pgdmtkb.mongodb.net/?appName=Cluster2", {
         useNewUrlParser: true,
         useUnifiedTopology: true,
       });

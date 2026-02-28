@@ -5,14 +5,16 @@ const adminHomeRouter = require("../routers/admin-routes/admin_home");
 
 const app = express();
 app.use(express.json());
-app.use("/admin/login", adminLoginRouter);
+
+// ✅ FIX: mount at /admin (not /admin/login)
+app.use("/admin", adminLoginRouter);
 app.use("/admin", adminHomeRouter);
 
 describe("Admin Routes", () => {
   test("POST /admin/login - correct credentials", async () => {
     const res = await request(app).post("/admin/login").send({
-      email: "pinnukoushikp@gmail.com",
-      password: "Koushik@2004",
+      email: "sruthikommati2829@gmail.com",
+      password: "sruthi@123",
     });
 
     expect(res.status).toBe(200);
@@ -29,6 +31,4 @@ describe("Admin Routes", () => {
     expect(res.status).toBe(401);
     expect(res.body.message).toBe("Invalid email or password");
   });
-
-
 });

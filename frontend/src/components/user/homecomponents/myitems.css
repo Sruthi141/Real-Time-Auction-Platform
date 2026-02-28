@@ -96,3 +96,43 @@
       grid-template-columns: 1fr; /* 1 column */
     }
   }
+/* ✅ Allow clicking button by preventing image overlay clicks */
+.user-myitems-div-image {
+  pointer-events: none !important;
+}
+
+/* ✅ Ensure button always receives clicks */
+.payment-button {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 999999 !important;
+}
+.user-myitems-div-item,
+.user-myitems-div-content,
+.user-myitems-div-current-price {
+  position: relative;
+  z-index: 10;
+}
+
+/* 1) Image should never capture clicks */
+.user-myitems-div-image {
+  pointer-events: none !important;
+}
+
+/* 2) Ensure the button is always clickable */
+.payment-button {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 999999 !important;
+}
+
+/* 3) Ensure its parent section is above overlays */
+.user-myitems-div-current-price {
+  position: relative !important;
+  z-index: 999998 !important;
+}
+
+.user-myitems-div-item::before,
+.user-myitems-div-item::after {
+  pointer-events: none !important;
+}

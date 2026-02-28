@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import AddItem from "./AddItem"
 import axios from "axios"
@@ -113,6 +113,7 @@ export default function SellerHome() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("dashboard")
   const sellerid = Cookies.get("seller")
+  const initialFetchedRef = useRef(false)
 
   // Analytics data
   const [analytics, setAnalytics] = useState({
@@ -123,65 +124,48 @@ export default function SellerHome() {
     totalVisits: 0,
   })
 
-  const fetchSellerData = async () => {
+  const fetchSellerData = async (force = false) => {
     try {
+      // prevent duplicate fetches only for initial mount unless `force` is true
+      if (initialFetchedRef.current && !force) return
       if (!sellerid) {
         return navigate("/seller")
       }
-
       const response = await axios.get(`${process.env.REACT_APP_BACKENDURL}/sellerhome/${sellerid}`)
       setSeller(response.data.seller)
 
-      const currentTime = new Date()
-      const validItems = response.data.items.filter((item) => {
-        if (!item.EndTime) {
-          return true
-        }
-        const endTime = new Date(item.EndTime)
-        if (endTime > currentTime) {
-          return true
-        } else {
-          // Send API request to mark item as unsold
-          axios
-            .post(`${process.env.REACT_APP_BACKENDURL}/item/unsold/${item._id}`)
-            .then((response) => {
-              console.log(`Item ${item._id} marked as unsold`)
-            })
-            .catch((error) => {
-              console.error(`Error marking item ${item._id} as unsold:`, error)
-            })
-          return false
-        }
-      })
-
-      setItems(validItems.reverse())
+      // Backend now returns only active/upcoming items. Use them directly.
+      setItems((response.data.items || []).slice().reverse())
 
       // Calculate analytics
-      const totalItems = validItems.length
-      const totalValue = validItems.reduce((sum, item) => sum + Number.parseInt(item.current_price), 0)
+      const itemsForAnalytics = response.data.items || []
+      const totalItems = itemsForAnalytics.length
+      const totalValue = itemsForAnalytics.reduce((sum, item) => {
+        const price = Number(item.current_price ?? item.base_price ?? 0)
+        return sum + (isNaN(price) ? 0 : price)
+      }, 0)
       const averagePrice = totalItems > 0 ? totalValue / totalItems : 0
-      const totalBids = validItems.reduce(
+      const totalBids = itemsForAnalytics.reduce(
         (sum, item) => sum + (item.auction_history ? item.auction_history.length : 0),
         0,
       )
-      console.log(validItems[0])
-      console.log(totalBids)
-      const totalVisits = validItems.reduce(
+      const totalVisits = itemsForAnalytics.reduce(
         (sum, item) => sum + (item.visited_users ? item.visited_users.length : 0),
         0,
       )
 
-      setAnalytics({
-        totalItems,
-        totalValue,
-        averagePrice,
-        totalBids,
-        totalVisits,
-      })
+      setAnalytics({ totalItems, totalValue, averagePrice, totalBids, totalVisits })
     } catch (error) {
       console.error("Error fetching data:", error)
+      // If seller doesn't exist, remove cookie and redirect to seller login
+      if (error && error.response && error.response.status === 404) {
+        Cookies.remove('seller')
+        return navigate('/seller')
+      }
     } finally {
       setLoading(false)
+      // mark that we've completed at least one fetch
+      initialFetchedRef.current = true
     }
   }
 
@@ -291,6 +275,17 @@ export default function SellerHome() {
     );
   };
   if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-slate-50">
+        <div className="p-4 rounded-full bg-indigo-100">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    )
+  }
+
+  // Guard: if seller data not loaded yet, show loading placeholder
+  if (!seller) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
         <div className="p-4 rounded-full bg-indigo-100">
@@ -472,7 +467,7 @@ export default function SellerHome() {
                 <AddItem
                   onClose={handleCloseForm}
                   sellerdata={seller}
-                  fetchdata={fetchSellerData} // Pass fetchSellerData to AddItem
+                  fetchdata={() => fetchSellerData(true)} // allow AddItem to force refresh
                   onAdd={handleNewItem}
                 />
               </div>

@@ -1,5 +1,5 @@
 const express = require('express');
-const AdminController = require('../../controllers/admin/deleteitem,'); 
+const AdminController = require('../../controllers/admin/deleteitem'); 
 const { logAdminActions, AdminErrorMiddleware } = require("../../middleware/Admin");
 
 const router = express.Router();

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const request = require("supertest");
 const express = require("express");
 const mongoose = require("mongoose");
@@ -31,7 +32,8 @@ function generateTestUser() {
 const testUser = generateTestUser();
 beforeAll(async () => {
   try {
-    await mongoose.connect("mongodb+srv://koushik:koushik@cluster0.h2lzgvs.mongodb.net/test_wbd", {
+    const mongoUri = process.env.MONGO_URI_TEST || process.env.MONGO_URI || "mongodb+srv://Real-Time-Auction:R9h7WYanHAyhdsJr@cluster2.pgdmtkb.mongodb.net/?appName=Cluster2";
+    await mongoose.connect(mongoUri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

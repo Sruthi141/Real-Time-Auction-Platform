@@ -13,6 +13,7 @@ const FeedBack= require('./models/FeedBackModel')
 const nodemailer = require('nodemailer');
 const app = express();
 const email = "hexart637@gmail.com";
+const PaymentModel = require("./models/PaymentModel");
 const morgan = require('morgan');
 const PerformanceLog = require('./models/PerformanceLog');
 const UserModel = require('./models/usermodel')
@@ -23,6 +24,7 @@ const stripe = require('stripe');
 const getRedisClient = require('./redis'); // Import Redis client
 const { v2: cloudinary } = require('cloudinary');
 const {storage} = require('./routers/seller-routes/storage');
+
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -45,7 +47,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     '.swagger-ui .opblock .opblock-summary-path-description-wrapper { align-items: center; display: flex; flex-wrap: wrap; gap: 0 10px; padding: 0 10px; width: 100%; }',
   customCssUrl: CSS_URL,
 }));
-
+app.use("/payment", require("./routers/payment-routes/payment"));
 
 const allowedOrigins = [
   'http://localhost:3000',
@@ -73,9 +75,14 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("uploads"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-mongoose.connect("mongodb+srv://koushik:koushik@cluster0.h2lzgvs.mongodb.net/fdfed").then(()=>{
-  console.log("MongoDB Connected ")
-});
+const mongoUri = process.env.MONGO_URI || "mongodb+srv://Real-Time-Auction:R9h7WYanHAyhdsJr@cluster2.pgdmtkb.mongodb.net/?appName=Cluster2";
+mongoose.connect(mongoUri)
+  .then(() => {
+    console.log("MongoDB Connected");
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+  });
 app.use(express.json()); // To parse JSON body
 
 //Third party middleware
@@ -90,8 +97,11 @@ app.get('/' , function (req, res) {
 }
 )
 app.delete('/item/:id', function (req, res) {
-  itemmodel.findbyIdAndDelete(req.params.id).then(()=>{
+  itemmodel.findByIdAndDelete(req.params.id).then(()=>{
     res.status(200).send({message:"Item deleted successfully"});
+  }).catch(err => {
+    console.error('Error deleting item:', err);
+    res.status(500).send({ message: 'Error deleting item' });
   })
 })
 app.post('/feedback', async (req, res) => {
@@ -156,17 +166,18 @@ app.post('/item/unsold/:id', async (req, res) => {
     if (!item) {
       return res.status(404).send({ message: "Item not found" });
     }
-    const beforeUpdate = item.aution_active ;
-    await itemmodel.findByIdAndUpdate(req.params.id, { aution_active: false });
-    const afterUpdate = item.auction_active;
+    const beforeUpdate = item.aution_active;
+    const updatedItem = await itemmodel.findByIdAndUpdate(req.params.id, { aution_active: false }, { new: true });
+    const afterUpdate = updatedItem ? updatedItem.aution_active : null;
 
-    console.log(beforeUpdate)
-    console.log(afterUpdate)
+    console.log(beforeUpdate);
+    console.log(afterUpdate);
     res.status(200).send({
       message: `Item ${req.params.id} marked as unsold`,
       beforeUpdate,
       afterUpdate,
     });
+
     const client = await getRedisClient();
     await client.flushAll();
   } catch (error) {
@@ -301,7 +312,7 @@ app.get('/seller/delete/:id', async (req, res) => {
   }
 })
 
-app.get('item/delete/:id', async (req, res) => {
+app.get('/item/delete/:id', async (req, res) => {
   const { id } = req.params;
    const client = await getRedisClient()
   try {
@@ -358,7 +369,23 @@ app.put('/item/update/:id', upload.single('image'), async (req, res) => {
       { new: true }
     );
 
-    // Clear only relevant cache keys 
+    // 404 handler for API routes (return JSON instead of HTML)
+    app.use((req, res, next) => {
+      if (req.method === 'GET' && req.accepts('html') && !req.originalUrl.startsWith('/api') && !req.originalUrl.startsWith('/admin') && !req.originalUrl.startsWith('/seller') && !req.originalUrl.startsWith('/user')) {
+        // Let frontend handle client-side routes
+        return res.status(404).json({ error: 'Not Found', path: req.originalUrl });
+      }
+      res.status(404).json({ error: 'Not Found', path: req.originalUrl });
+    });
+
+    // Generic error handler that always returns JSON
+    app.use((err, req, res, next) => {
+      console.error('Unhandled error:', err);
+      const status = err.status || 500;
+      res.status(status).json({ error: err.message || 'Internal Server Error' });
+    });
+
+    module.exports = app;
     await client.flushAll();
     res.json(updatedItem);
   } catch (error) {

@@ -1,14 +1,23 @@
-"use client"
+// AddItem.jsx
+"use client";
 
-import { useState, useCallback , useEffect} from "react"
-import Cookies from "js-cookie"
-import SubscriptionModal from "./subscriptionModal"
+import { useState, useCallback, useEffect } from "react";
+import Cookies from "js-cookie";
+import SubscriptionModal from "./subscriptionModal";
 
-const AddItem = ({ onClose, onAdd, sellerdata }) => {
-  const seller = Cookies.get("seller")
-  const [image, setImage] = useState(null)
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
-  const [loading, setLoading] = useState(false)
+const BACKEND = process.env.REACT_APP_BACKENDURL;
+
+const AddItem = ({ onClose, onAdd, sellerdata, fetchdata }) => {
+  const seller = Cookies.get("seller");
+  const [image, setImage] = useState(null);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // ✅ Keep backend logic unchanged:
+  // We will send BOTH key versions to be safe:
+  // - basePrice + base_price
+  // - StartTime + startTime
+  // - EndTime + endTime
   const [newItem, setNewItem] = useState({
     name: "",
     basePrice: 0,
@@ -16,67 +25,102 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
     date: "",
     StartTime: "",
     EndTime: "",
-  })
+    image: null,
+  });
 
   useEffect(() => {
-    if (sellerdata.subscription === "free" && sellerdata.items.length + sellerdata.solditems.length >= 3) {
-      setShowSubscriptionModal(true)
-    }
-    if (sellerdata.subscription === "standard" && sellerdata.items.length  + sellerdata.solditems.length>= 10) {
-      setShowSubscriptionModal(true)
-    }
-  }, [sellerdata])
+    if (!sellerdata) return;
+
+    const totalCount =
+      (sellerdata.items ? sellerdata.items.length : 0) +
+      (sellerdata.solditems ? sellerdata.solditems.length : 0);
+
+    if (sellerdata.subscription === "free" && totalCount >= 3) setShowSubscriptionModal(true);
+    if (sellerdata.subscription === "standard" && totalCount >= 10) setShowSubscriptionModal(true);
+  }, [sellerdata]);
 
   const handleInputChange = useCallback((e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setNewItem((prev) => ({
       ...prev,
       [name]: value,
-    }))
-  }, [])
+    }));
+  }, []);
 
   const handleImageChange = useCallback((e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setNewItem((prev) => ({
-        ...prev,
-        image: file,
-      }))
-      setImage(URL.createObjectURL(file))
-    }
-  }, [])
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setNewItem((prev) => ({
+      ...prev,
+      image: file,
+    }));
+    setImage(URL.createObjectURL(file));
+  }, []);
 
   const handleSubscribe = async (plan) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKENDURL}/seller/${seller}/subscribe`, {
+      const response = await fetch(`${BACKEND}/seller/${seller}/subscribe`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
-      })
-      const data = await response.json()
-      setShowSubscriptionModal(false)
+      });
+      await response.json().catch(() => null);
+      setShowSubscriptionModal(false);
     } catch (error) {
-      console.error("Error updating subscription:", error)
+      console.error("Error updating subscription:", error);
     }
-  }
+  };
 
   const submit = async (event) => {
-    event.preventDefault()
-      setLoading(true)
+    event.preventDefault();
+    setLoading(true);
 
     try {
-      const formData = new FormData()
-      Object.keys(newItem).forEach((key) => {
-        formData.append(key, newItem[key])
-      })
+      const formData = new FormData();
 
-      const result = await fetch(`${process.env.REACT_APP_BACKENDURL}/create/${seller}`, {
+      // ✅ append original fields
+      formData.append("name", newItem.name);
+      formData.append("basePrice", newItem.basePrice);
+      formData.append("type", newItem.type);
+      formData.append("date", newItem.date);
+      formData.append("StartTime", newItem.StartTime);
+      formData.append("EndTime", newItem.EndTime);
+      if (newItem.image) formData.append("image", newItem.image);
+
+      // ✅ append extra aliases (DOES NOT change backend logic, just improves compatibility)
+      formData.append("base_price", newItem.basePrice);
+      formData.append("startTime", newItem.StartTime);
+      formData.append("endTime", newItem.EndTime);
+
+      const result = await fetch(`${BACKEND}/create/${seller}`, {
         method: "POST",
         body: formData,
-      })
+      });
 
+      let data = null;
+      try {
+        data = await result.json();
+      } catch (e) {
+        console.warn("No JSON response for create item", e);
+      }
+
+      console.log("create item response status:", result.status, "json:", data);
+
+      if (!result.ok) {
+        const msg = (data && data.message) || `Server returned ${result.status}`;
+        alert("Failed to add item: " + msg);
+        return;
+      }
+
+      // ✅ If backend returns created item, pass it to parent for instant UI update
+      const created =
+        data?.data?.item ||
+        data?.item ||
+        data?.data ||
+        data;
+
+      // reset UI
       setNewItem({
         name: "",
         basePrice: 0,
@@ -84,15 +128,26 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
         date: "",
         StartTime: "",
         EndTime: "",
-      })
-      setImage(null)
-      onClose()
+        image: null,
+      });
+      setImage(null);
+
+      // ✅ refresh parent list
+      if (typeof fetchdata === "function") {
+        fetchdata();
+      }
+      if (typeof onAdd === "function") {
+        onAdd(created);
+      }
+
+      onClose?.();
     } catch (error) {
-      console.error("Error uploading image:", error)
+      console.error("Error uploading image:", error);
+      alert("Upload failed. Check console.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -102,11 +157,11 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
           <p className="text-center mt-4">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (showSubscriptionModal) {
-    return <SubscriptionModal onClose={onClose} onSubscribe={handleSubscribe} />
+    return <SubscriptionModal onClose={onClose} onSubscribe={handleSubscribe} />;
   }
 
   return (
@@ -125,13 +180,13 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
             />
           </svg>
         </button>
+
         <div className="space-y-4">
           <div className="text-lg font-bold text-gray-800">Add New Item</div>
           <div className="text-sm text-gray-600">Fill out the details for the new item you want to add.</div>
+
           <div className="space-y-2">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Name
-            </label>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
             <input
               id="name"
               name="name"
@@ -139,12 +194,12 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
               value={newItem.name}
               onChange={handleInputChange}
               className="block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500"
+              required
             />
           </div>
+
           <div className="space-y-2">
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700">
-              Image
-            </label>
+            <label htmlFor="image" className="block text-sm font-medium text-gray-700">Image</label>
             <input
               id="image"
               name="image"
@@ -152,19 +207,13 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
               type="file"
               accept="image/*"
               className="block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500"
+              required
             />
-            {image && (
-              <img
-                src={image}
-                alt="Preview"
-                className="mt-2 max-w-xs rounded"
-              />
-            )}
+            {image && <img src={image} alt="Preview" className="mt-2 max-w-xs rounded" />}
           </div>
+
           <div className="space-y-2">
-            <label htmlFor="basePrice" className="block text-sm font-medium text-gray-700">
-              Base Price
-            </label>
+            <label htmlFor="basePrice" className="block text-sm font-medium text-gray-700">Base Price</label>
             <input
               id="basePrice"
               name="basePrice"
@@ -173,31 +222,30 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
               value={newItem.basePrice}
               onChange={handleInputChange}
               className="block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500"
+              min={0}
+              required
             />
           </div>
+
           <div className="space-y-2">
-            <label htmlFor="type" className="block text-sm font-medium text-gray-700">
-              Type
-            </label>
+            <label htmlFor="type" className="block text-sm font-medium text-gray-700">Type</label>
             <select
               id="type"
               name="type"
               value={newItem.type}
               onChange={handleInputChange}
               className="block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500"
+              required
             >
-              <option value="" disabled>
-                Select item type
-              </option>
+              <option value="" disabled>Select item type</option>
               <option value="Art">Art</option>
               <option value="Antique">Antique</option>
               <option value="Used">Used</option>
             </select>
           </div>
+
           <div className="space-y-2">
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-              Date
-            </label>
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date</label>
             <input
               id="date"
               name="date"
@@ -205,13 +253,13 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
               value={newItem.date}
               onChange={handleInputChange}
               className="block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500"
+              required
             />
           </div>
+
           <div className="flex space-x-4">
             <div className="space-y-2 w-1/2">
-              <label htmlFor="StartTime" className="block text-sm font-medium text-gray-700">
-                Start Time
-              </label>
+              <label htmlFor="StartTime" className="block text-sm font-medium text-gray-700">Start Time</label>
               <input
                 id="StartTime"
                 name="StartTime"
@@ -219,12 +267,12 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
                 value={newItem.StartTime}
                 onChange={handleInputChange}
                 className="block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500"
+                required
               />
             </div>
+
             <div className="space-y-2 w-1/2">
-              <label htmlFor="EndTime" className="block text-sm font-medium text-gray-700">
-                End Time
-              </label>
+              <label htmlFor="EndTime" className="block text-sm font-medium text-gray-700">End Time</label>
               <input
                 id="EndTime"
                 name="EndTime"
@@ -232,9 +280,11 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
                 value={newItem.EndTime}
                 onChange={handleInputChange}
                 className="block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500"
+                required
               />
             </div>
           </div>
+
           <div className="mt-4 flex justify-end space-x-4">
             <button
               onClick={onClose}
@@ -250,7 +300,7 @@ const AddItem = ({ onClose, onAdd, sellerdata }) => {
         </div>
       </form>
     </div>
-  )
-}
+  );
+};
 
-export default AddItem
+export default AddItem;

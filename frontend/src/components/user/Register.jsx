@@ -27,13 +27,16 @@ const RegisterPage = () => {
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) { // Request is complete
-        if (xhr.status === 200) { // Check if response is OK
+        if (xhr.status === 200 || xhr.status === 201) { // Accept 200 or 201
           const response = JSON.parse(xhr.responseText);
           console.log(response);
           if (response.message === "Email Already Exists") {
             setError("Email Already Exists");
           } else if (response.message === "Verification Email Sent To Your Email") {
             setError("Verification Link Sent to your Email");
+            console.log('Registration successful:', response);
+          } else if (response.message === "Registration Successful") {
+            setError("Registration Successful");
             console.log('Registration successful:', response);
           }
         } else {

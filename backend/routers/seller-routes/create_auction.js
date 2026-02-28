@@ -1,23 +1,25 @@
-const express = require('express');
+const express = require("express");
 const multer = require("multer");
 const AuctionController = require("../../controllers/seller/create_auction");
-const { logSellerActions, sellerErrorMiddleware } = require('../../middleware/Seller');
-const { storage } = require('./storage');
+const { logSellerActions } = require("../../middleware/Seller");
+const { storage } = require("./storage");
 const cloudinary = require("cloudinary").v2;
+
 const router = express.Router();
+
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
   api_secret: process.env.API_SECRET,
 });
 
-// Configure multer for in-memory storage
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
-router.post("/:seller", logSellerActions, sellerErrorMiddleware, upload.single('image'), (req, res) => {
-  
-  console.log(req.file)
-  return AuctionController.createAuctionPost(req, res);
-});
+router.post(
+  "/:seller",
+  logSellerActions,
+  upload.single("image"),
+  AuctionController.createAuctionPost
+);
 
 module.exports = router;

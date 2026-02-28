@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import axios from 'axios';
 
 export default function File() {
-    const seller = "koushik"
+    const seller = "sruthi"
     const [file , setfile] = useState()
     function submitform () {
       console.log("submiting");

@@ -4,6 +4,7 @@ const { logAdminActions, AdminErrorMiddleware } = require("../../middleware/Admi
 
 const router = express.Router();
 
+// Handle POST to the mounted path (/admin/login)
 router.post("/", logAdminActions, AdminErrorMiddleware, AdminController.login);
 
 module.exports = router;

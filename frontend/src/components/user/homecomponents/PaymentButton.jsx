@@ -1,28 +1,34 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import PaymentModal from './PaymentModal';
+import React from "react";
 
-const PaymentButton = ({ item }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+export default function PaymentButton({ item }) {
+  const handlePayCapture = (e) => {
+    // capture phase fires before bubbling + before parent handlers
+    alert("CLICK ✅ (capture)");
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopPropagation();
+  };
 
   return (
-    <>
-      <motion.button
-        onClick={() => setIsModalOpen(true)}
-        className="payment-button"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        Pay ₹{item.current_price}
-      </motion.button>
-
-      <PaymentModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        item={item}
-      />
-    </>
+    <button
+      type="button"
+      onPointerDownCapture={handlePayCapture}
+      onClickCapture={handlePayCapture}
+      className="payment-button"
+      style={{
+        padding: "8px 14px",
+        borderRadius: 8,
+        background: "#ef4444",
+        color: "white",
+        border: "none",
+        cursor: "pointer",
+        fontWeight: 600,
+        position: "relative",
+        zIndex: 2147483647, // max z-index
+        pointerEvents: "auto",
+      }}
+    >
+      Pay Now
+    </button>
   );
-};
-
-export default PaymentButton;
+}
