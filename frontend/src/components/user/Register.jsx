@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion'
 import { User, Mail, Lock, AlertCircle, LogIn } from 'lucide-react'
 import Cookies from 'js-cookie';
 import './Register.css';
 import { useGoogleLogin } from "@react-oauth/google";
 import axios from 'axios';
-import { ArrowLeft ,Chrome } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
