@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
-const { itemschema } = require("./itemmodel");
 
 const userschema = mongoose.Schema({
     username: String,
     email: { type: String, index: true, unique: true },
     password: String,
-    items: [itemschema],
-    liked: [itemschema]
+    items: [{ type: mongoose.Schema.Types.ObjectId, ref: 'items' }],
+    liked: [{ type: mongoose.Schema.Types.ObjectId, ref: 'items' }]
 }, {
     timestamps: true // This will add createdAt and updatedAt fields automatically
 });

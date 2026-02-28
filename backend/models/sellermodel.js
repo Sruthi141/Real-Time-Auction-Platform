@@ -1,14 +1,13 @@
 const mongoose = require('mongoose');
-const { itemschema } = require("./itemmodel");
 
 const sellerschema = mongoose.Schema({
     name: String,
     email: { type: String, index: true, unique: true },
     phone: { type: String, index: true },
     password: String,
-    items: [itemschema],
-    solditems: [itemschema],
-    likeditems: [itemschema],
+    items: [{ type: mongoose.Schema.Types.ObjectId, ref: 'items' }],
+    solditems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'items' }],
+    likeditems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'items' }],
     subscription:{
         type: String,
         enum: ['free', 'standard' , 'premium'],

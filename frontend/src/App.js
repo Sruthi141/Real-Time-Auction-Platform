@@ -8,6 +8,7 @@ import RegisterPage from "./components/user/Register";
 import Home from "./components/user/Home";
 import Auction from "./components/user/Auction";
 import VerifyEmail from "./components/user/VerifyEmail";
+import VerifyOTP from "./components/user/VerifyOTP";
 import FeedBack from "./components/user/FeedBAckForm";
 
 import SellerAuth from "./components/seller/Login";
@@ -26,6 +27,7 @@ import Performance from "./Performance";
 
 import PaymentPage from "./components/user/homecomponents/PaymentPage";
 import PaymentSuccess from "./components/user/homecomponents/PaymentSuccess";
+import PaymentCancel from "./components/user/PaymentCancel";
 
 function App() {
   return (
@@ -36,6 +38,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify/:userid" element={<VerifyEmail />} />
+        <Route path="/verify-otp" element={<VerifyOTP />} />
         <Route path="/home" element={<Home />} />
         <Route path="/feedback" element={<FeedBack />} />
 
@@ -61,6 +64,8 @@ function App() {
         {/* ✅ Payment */}
         <Route path="/pay/:itemId" element={<PaymentPage />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/success" element={<PaymentSuccess />} />
+        <Route path="/cancel" element={<PaymentCancel />} />
       </Routes>
     </BrowserRouter>
   );

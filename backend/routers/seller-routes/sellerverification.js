@@ -4,7 +4,13 @@ const { logSellerActions } = require("../../middleware/Seller");
 
 const router = express.Router();
 
-// Verify seller email
+// Verify OTP
+router.post("/otp", logSellerActions, SellerVerificationController.verifyOTP);
+
+// Resend OTP
+router.post("/resend-otp", logSellerActions, SellerVerificationController.resendOTP);
+
+// Verify seller email by ID (legacy)
 router.get("/:id", logSellerActions, SellerVerificationController.verifyEmail);
 
 module.exports = router;

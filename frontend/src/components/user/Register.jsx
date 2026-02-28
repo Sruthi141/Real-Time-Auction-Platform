@@ -32,12 +32,14 @@ const RegisterPage = () => {
           console.log(response);
           if (response.message === "Email Already Exists") {
             setError("Email Already Exists");
-          } else if (response.message === "Verification Email Sent To Your Email") {
-            setError("Verification Link Sent to your Email");
-            console.log('Registration successful:', response);
+          } else if (response.message === "Verification Email Sent To Your Email" || response.message?.includes("Registration successful")) {
+            // Redirect to OTP verification page
+            // Pass devOtp if available (for development when email fails)
+            navigate('/verify-otp', { state: { email, isSeller: false, devOtp: response.devOtp } });
           } else if (response.message === "Registration Successful") {
             setError("Registration Successful");
             console.log('Registration successful:', response);
+            setTimeout(() => navigate('/login'), 1500);
           }
         } else {
           setError("An error occurred during registration.");

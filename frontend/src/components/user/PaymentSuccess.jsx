@@ -14,10 +14,10 @@ const PaymentSuccess = () => {
       <h1 className="text-2xl font-bold mb-4">Payment Successful!</h1>
       <p className="text-gray-600 mb-8">Your transaction has been completed.</p>
       <Link
-        to="/myitems"
+        to="/home"
         className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
       >
-        View My Items
+        Go to Home
       </Link>
     </motion.div>
   );

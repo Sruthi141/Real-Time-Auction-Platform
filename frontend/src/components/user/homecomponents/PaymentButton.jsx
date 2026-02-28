@@ -1,34 +1,48 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function PaymentButton({ item }) {
-  const handlePayCapture = (e) => {
-    // capture phase fires before bubbling + before parent handlers
-    alert("CLICK ✅ (capture)");
+  const navigate = useNavigate();
+
+  const handlePayClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    e.stopPropagation();
+    
+    if (!item?._id) {
+      alert("Item ID not found");
+      return;
+    }
+
+    // Check if item is already paid
+    if (item?.paid) {
+      alert("This item has already been paid for");
+      return;
+    }
+
+    // Items now stay in collection permanently, so _id works directly
+    navigate(`/pay/${item._id}`);
   };
 
   return (
     <button
       type="button"
-      onPointerDownCapture={handlePayCapture}
-      onClickCapture={handlePayCapture}
+      onClick={handlePayClick}
+      disabled={item?.paid}
       className="payment-button"
       style={{
         padding: "8px 14px",
         borderRadius: 8,
-        background: "#ef4444",
+        background: item?.paid ? "#9ca3af" : "#ef4444",
         color: "white",
         border: "none",
-        cursor: "pointer",
+        cursor: item?.paid ? "not-allowed" : "pointer",
         fontWeight: 600,
         position: "relative",
-        zIndex: 2147483647, // max z-index
+        zIndex: 10,
         pointerEvents: "auto",
       }}
     >
-      Pay Now
+      {item?.paid ? "Paid ✅" : "Pay Now"}
     </button>
   );
 }

@@ -6,6 +6,8 @@ const sellerschema = mongoose.Schema({
     email: { type: String, index: true, unique: true },
     phone: { type: String, index: true },
     password: String,
+    otp: String,
+    otpExpiry: Date,
     items: [itemschema]
 }, {
     timestamps: true // This will add createdAt and updatedAt fields automatically

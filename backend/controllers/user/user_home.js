@@ -22,22 +22,27 @@ async function renderUserHome(req, res) {
         let user;
         let source;
         let time = 0;
-        const cachedUser = await client.get(`user:${id}`);
-        if (cachedUser) {
-            user = JSON.parse(cachedUser);
-            time = Date.now() - start;
-            console.log(id , cachedUser)
-            source = 'cache';
-        } else {
-            user = await usermodel.findOne({ _id: id });
-            console.log(user._id , id )
-            if (!user || user==null) return res.status(404).send("User not found");
-            time = Date.now() - start;
-            await client.set(`user:${id}`, JSON.stringify(user), { EX: 3600 });
-            source = 'db';
-        }
+        
+        // Skip cache for now to ensure fresh populated data
+        // TODO: Implement smarter caching that handles populated refs
+        
+        // Populate items and liked arrays with full item documents
+        user = await usermodel.findOne({ _id: id })
+            .populate('items')
+            .populate('liked');
+        
+        if (!user || user==null) return res.status(404).send("User not found");
+        
+        console.log(user._id, id);
+        time = Date.now() - start;
+        source = 'db';
+        
+        // Ensure items and liked are arrays (not undefined)
+        if (!user.items) user.items = [];
+        if (!user.liked) user.liked = [];
 
-        const items = await itemmodel.find();
+        // Get all active (unsold) items for the marketplace
+        const items = await itemmodel.find({ sold: { $ne: true } });
 
         const data = {
             user,

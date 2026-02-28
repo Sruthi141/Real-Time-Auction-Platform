@@ -5,6 +5,8 @@ const userschema = mongoose.Schema({
     username: String,
     email: { type: String, index: true, unique: true },
     password: String,
+    otp: String,
+    otpExpiry: Date,
     items: [itemschema]
 }, {
     timestamps: true // This will add createdAt and updatedAt fields automatically

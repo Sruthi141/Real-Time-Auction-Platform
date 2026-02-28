@@ -20,7 +20,6 @@ const UserModel = require('./models/usermodel')
 const YAML = require('yamljs');
 const swaggerUi = require('swagger-ui-express');
 const fs = require('fs');
-const stripe = require('stripe');
 const getRedisClient = require('./redis'); // Import Redis client
 const { v2: cloudinary } = require('cloudinary');
 const {storage} = require('./routers/seller-routes/storage');
@@ -39,6 +38,42 @@ const upload = multer({ storage });
 
 const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.1.0/swagger-ui.min.css";
 
+// ============================================
+// CORS MUST BE FIRST - before any routes!
+// ============================================
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:4000',
+  'https://fdfed-iota.vercel.app',
+  'https://fdfed-2-server.vercel.app'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
+
+app.set('view engine', 'ejs');
+app.use(bodyParser.urlencoded({extended: true}));
+
+//Inbuilt middleware
+app.use(express.static("uploads"));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 // Swagger setup
 const swaggerSpec = YAML.load(`${__dirname}/swagger.yaml`); // Use absolute path
 
@@ -47,34 +82,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     '.swagger-ui .opblock .opblock-summary-path-description-wrapper { align-items: center; display: flex; flex-wrap: wrap; gap: 0 10px; padding: 0 10px; width: 100%; }',
   customCssUrl: CSS_URL,
 }));
+
+// Payment routes (now AFTER CORS middleware)
 app.use("/payment", require("./routers/payment-routes/payment"));
-
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:4000',
-  'https://fdfed-iota.vercel.app',
-  'https://fdfed-2-server.vercel.app/'
-];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS' , 'PUT' ,   'DELETE'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true // only needed if using cookies/sessions
-}));
-app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({extended: true}));
-
-//Inbuilt middleware
-app.use(express.static("uploads"));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 const mongoUri = process.env.MONGO_URI;
 mongoose.connect(mongoUri)
   .then(() => {
@@ -186,6 +196,18 @@ app.post('/item/unsold/:id', async (req, res) => {
   }
 })
 
+// Flush Redis cache (useful after schema changes)
+app.get("/flush-cache", async (req, res) => {
+  try {
+    const client = await getRedisClient();
+    await client.flushAll();
+    res.json({ message: "Cache flushed successfully" });
+  } catch (error) {
+    console.error('Error flushing cache:', error);
+    res.status(500).json({ error: 'An error occurred while flushing cache.' });
+  }
+});
+
 app.get("/performance" , async (req, res) => {
   const logs = await PerformanceLog.find();
   res.json(logs);
@@ -215,26 +237,6 @@ app.post('/seller/:seller/subscribe', async (req, res) => {
   }
 });
 
-app.post('/create-checkout-session', async (req, res) => {
-  const { items } = req.body;
-
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    mode: 'payment',
-    line_items: items.map(item => ({
-      price_data: {
-        currency: 'usd',
-        product_data: { name: item.name },
-        unit_amount: item.price * 100,
-      },
-      quantity: item.quantity,
-    })),
-    success_url: `${process.env.FRONTEND_URL}/success`,
-    cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-  });
-
-  res.json({ id: session.id });
-});
 
 app.delete('/user/:id', async (req, res) => {
   const { id } = req.params;
@@ -369,23 +371,6 @@ app.put('/item/update/:id', upload.single('image'), async (req, res) => {
       { new: true }
     );
 
-    // 404 handler for API routes (return JSON instead of HTML)
-    app.use((req, res, next) => {
-      if (req.method === 'GET' && req.accepts('html') && !req.originalUrl.startsWith('/api') && !req.originalUrl.startsWith('/admin') && !req.originalUrl.startsWith('/seller') && !req.originalUrl.startsWith('/user')) {
-        // Let frontend handle client-side routes
-        return res.status(404).json({ error: 'Not Found', path: req.originalUrl });
-      }
-      res.status(404).json({ error: 'Not Found', path: req.originalUrl });
-    });
-
-    // Generic error handler that always returns JSON
-    app.use((err, req, res, next) => {
-      console.error('Unhandled error:', err);
-      const status = err.status || 500;
-      res.status(status).json({ error: err.message || 'Internal Server Error' });
-    });
-
-    module.exports = app;
     await client.flushAll();
     res.json(updatedItem);
   } catch (error) {
@@ -397,5 +382,17 @@ app.put('/item/update/:id', upload.single('image'), async (req, res) => {
   }
 });
 
+
+// 404 handler for API routes
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Not Found', path: req.originalUrl });
+});
+
+// Generic error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || 'Internal Server Error' });
+});
 
 module.exports = app;

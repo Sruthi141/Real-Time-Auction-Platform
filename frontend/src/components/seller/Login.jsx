@@ -47,6 +47,10 @@ export default function SellerAuth() {
         if (result.message === "Account Created Successfully" || result.message === "Login Successfully") {
           Cookies.set('seller', result.sellerId, { expires: 7 });
           navigate("/sellerhome");
+        } else if (result.message === "Verification Email Sent To Your Email" || result.message?.includes("Registration successful")) {
+          // Redirect to OTP verification page
+          // Pass devOtp if available (for development when email fails)
+          navigate('/verify-otp', { state: { email, isSeller: true, devOtp: result.devOtp } });
         }
       } else {
         console.error('Error:', response.statusText);

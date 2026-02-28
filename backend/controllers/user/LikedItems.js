@@ -40,8 +40,11 @@ async function addLikedItems(req, res) {
             return res.status(404).send({ message: 'User or Item not found' });
         }
 
-        user.liked.push(item);
-        await user.save();
+        // Push only the item _id reference (not the full object)
+        if (!user.liked.includes(item._id)) {
+            user.liked.push(item._id);
+            await user.save();
+        }
 
         // Invalidate cache
         await client.flushAll();
@@ -64,7 +67,8 @@ async function deleteLikedItems(req, res) {
             return res.status(404).send({ message: 'User or Item not found' });
         }
 
-        user.liked = user.liked.filter(i => i._id.toString() !== itemid);
+        // Filter out the item _id reference
+        user.liked = user.liked.filter(id => id.toString() !== itemid);
         console.log("bef",user.liked.length)
         await user.save();
         console.log("aft",user.liked.length) 

@@ -2,8 +2,8 @@ const mongoose = require("mongoose");
 
 const paymentSchema = new mongoose.Schema(
   {
-    itemId: { type: mongoose.Schema.Types.ObjectId, ref: "item", required: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "user", required: true },
+    itemId: { type: mongoose.Schema.Types.ObjectId, ref: "items", required: true },
+    userId: { type: String, required: true }, // Changed to String to accept cookie values
 
     amount: { type: Number, required: true },
     method: { type: String, enum: ["card", "upi", "cash"], default: "upi" },
