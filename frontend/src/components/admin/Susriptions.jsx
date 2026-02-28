@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { Users, Crown, Star, Package, Search, ChevronDown, Filter, ArrowUpDown, Edit, Trash2 } from "lucide-react"
-import { Link } from "react-router-dom"
 import AdminNav from "./AdminNav"
 import { UserPlus } from "lucide-react"
-const SellersBySubscription = () => {
+  const SellersBySubscription = () => {
   const [sellers, setSellers] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("all")

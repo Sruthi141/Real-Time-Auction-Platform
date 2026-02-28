@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import './AdminLogin.css';  // Import the CSS file
 import { ArrowBigLeft } from "lucide-react";

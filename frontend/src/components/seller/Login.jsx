@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import './Login.css';
 import { ArrowBigLeft } from 'lucide-react';
+
 export default function SellerAuth() {
   const [activeTab, setActiveTab] = useState('login');
   const [name, setName] = useState('');
@@ -22,7 +23,11 @@ export default function SellerAuth() {
     e.preventDefault();
     // Validate password and phone number before sending
     if (activeTab === 'register') {
-      if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      if (
+        password.length < 8 ||
+        !/[a-zA-Z]/.test(password) ||
+        !/[!@#$%^&*(),.?":{}|<>]/.test(password)
+      ) {
         alert("Invalid password. Ensure it meets the criteria.");
         return; // Prevent submission
       }
@@ -31,23 +36,38 @@ export default function SellerAuth() {
         return; // Prevent submission
       }
     }
-    const url = activeTab === 'login' ? `${process.env.REACT_APP_BACKENDURL}/sellerlogin` : `${process.env.REACT_APP_BACKENDURL}/sellerregister`;
-    const body = activeTab === 'login'
-      ? { email, password }
-      : { name, email, password, phone };
+
+    const url =
+      activeTab === 'login'
+        ? `${process.env.REACT_APP_BACKENDURL}/sellerlogin`
+        : `${process.env.REACT_APP_BACKENDURL}/sellerregister`;
+
+    const body =
+      activeTab === 'login'
+        ? { email, password }
+        : { name, email, password, phone };
+
     try {
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+
       const result = await response.json();
       setServerMessage(result.message);
+
       if (response.ok) {
-        if (result.message === "Account Created Successfully" || result.message === "Login Successfully") {
+        if (
+          result.message === "Account Created Successfully" ||
+          result.message === "Login Successfully"
+        ) {
           Cookies.set('seller', result.sellerId, { expires: 7 });
           navigate("/sellerhome");
-        } else if (result.message === "Verification Email Sent To Your Email" || result.message?.includes("Registration successful")) {
+        } else if (
+          result.message === "Verification Email Sent To Your Email" ||
+          result.message?.includes("Registration successful")
+        ) {
           // Redirect to OTP verification page
           // Pass devOtp if available (for development when email fails)
           navigate('/verify-otp', { state: { email, isSeller: true, devOtp: result.devOtp } });
@@ -65,15 +85,18 @@ export default function SellerAuth() {
     if (seller !== undefined) {
       navigate("/sellerhome");
     }
-  }, [seller]);
+  }, [seller, navigate]); // ✅ FIX: added navigate
 
   return (
     <div className="seller-login-container">
       <div className="seller-login-box">
         <div className="seller-login-header">
-          <h1 className="seller-login-title"> <a style={{textAlign:"center"}} href="/"><ArrowBigLeft/></a> Welcome to HexArt</h1>
+          <h1 className="seller-login-title">
+            <a style={{ textAlign: "center" }} href="/"><ArrowBigLeft /></a> Welcome to HexArt
+          </h1>
           <p className="seller-login-subtitle">Sign in to your account or create a new one</p>
         </div>
+
         <div className="seller-login-tabs">
           <button
             className={`seller-login-tab ${activeTab === 'login' ? 'active' : ''}`}
@@ -88,6 +111,7 @@ export default function SellerAuth() {
             Register
           </button>
         </div>
+
         <form className="seller-login-form" onSubmit={handleSubmit}>
           {activeTab === 'register' && (
             <div className="seller-login-field">
@@ -97,12 +121,13 @@ export default function SellerAuth() {
                 type="text"
                 placeholder="Jared Palmer"
                 value={name}
-                onChange={(e) => {setName(e.target.value); console.log(e.target.value);setServerMessage('')}}
+                onChange={(e) => { setName(e.target.value); console.log(e.target.value); setServerMessage(''); }}
                 required
                 className="seller-login-input"
               />
             </div>
           )}
+
           <div className="seller-login-field">
             <label htmlFor="email" className="seller-login-label">Email</label>
             <input
@@ -123,8 +148,8 @@ export default function SellerAuth() {
               required
               className="seller-login-input"
             />
-
           </div>
+
           <div className="seller-login-field">
             <label htmlFor="password" className="seller-login-label">Password</label>
             <input
@@ -135,26 +160,27 @@ export default function SellerAuth() {
               onChange={(e) => {
                 const value = e.target.value;
                 setPassword(value);
-                if (activeTab === "register") {  
-                if (value.length < 8) {
-                 return setServerMessage("Password must be at least 8 characters long");
-                } else if (!/[a-zA-Z]/.test(value)) { // Check for at least one letter
-                  return setServerMessage("Password must contain at least one letter");
-                } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) { // Check for at least one special character
-                  return setServerMessage("Password must contain at least one special character");
+                if (activeTab === "register") {
+                  if (value.length < 8) {
+                    return setServerMessage("Password must be at least 8 characters long");
+                  } else if (!/[a-zA-Z]/.test(value)) {
+                    return setServerMessage("Password must contain at least one letter");
+                  } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+                    return setServerMessage("Password must contain at least one special character");
+                  } else {
+                    setServerMessage("");
+                  }
+                  console.log(e.target.value);
+                  setServerMessage('');
                 } else {
-                  setServerMessage("");
+                  setPassword(value);
                 }
-                console.log(e.target.value);
-                setServerMessage('')
-              } else{
-                setPassword(value)
               }}
-            }
               required
               className="seller-login-input"
             />
           </div>
+
           {activeTab === 'register' && (
             <div className="seller-login-field">
               <label htmlFor="phone" className="seller-login-label">Phone</label>
@@ -165,12 +191,12 @@ export default function SellerAuth() {
                 value={phone}
                 onChange={(e) => {
                   const value = e.target.value;
-                  if (value.length !== 10 || !/^\d+$/.test(value)) { // Check for exactly 10 digits
+                  if (value.length !== 10 || !/^\d+$/.test(value)) {
                     setServerMessage("Phone number must be exactly 10 digits");
                   } else {
                     setServerMessage("");
                   }
-                 console.log(e.target.value);
+                  console.log(e.target.value);
                   setPhone(value);
                 }}
                 required
@@ -178,10 +204,8 @@ export default function SellerAuth() {
               />
             </div>
           )}
-          <button
-            type="submit"
-            className="seller-login-button"
-          >
+
+          <button type="submit" className="seller-login-button">
             {activeTab === 'login' ? 'Sign in' : 'Create account'}
           </button>
         </form>

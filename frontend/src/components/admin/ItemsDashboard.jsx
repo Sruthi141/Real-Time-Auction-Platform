@@ -4,230 +4,8 @@ import { useState, useEffect } from "react"
 import { Package, Search, ChevronDown, Filter, ArrowUpDown, Edit, Trash2, PlusCircle } from "lucide-react"
 import AdminNav from "./AdminNav"
 import Cookies from "js-cookie"
-import axios from "axios"
 import { useNavigate } from "react-router-dom"
-const ItemForm = ({ item, onSave, onClose, mode = 'edit' }) => {
-  const [formData, setFormData] = useState({
-    name: item?.name || "",
-    base_price: item?.base_price || 0,
-    type: item?.type || "Art",
-    description: item?.description || "",
-    date: item?.date ? new Date(item.date).toISOString().split('T')[0] : "",
-    StartTime: item?.StartTime ? new Date(item.StartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "12:00",
-    EndTime: item?.EndTime ? new Date(item.EndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : "23:59",
-  });
-  
-  const [imagePreview, setImagePreview] = useState(item?.url || null);
-  const [imageFile, setImageFile] = useState(null);
-  const [sellerId, setSellerId] = useState(item?.seller || "");
-  const [sellers, setSellers] = useState([]);
 
-  useEffect(() => {
-    // Fetch sellers for the dropdown
-    const fetchSellers = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_BACKENDURL}/sellers`);
-        setSellers(response.data.data || []);
-      } catch (error) {
-        console.error("Error fetching sellers:", error);
-      }
-    };
-    fetchSellers();
-  }, []);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const updatedData = new FormData();
-    
-    // Append all form data
-    Object.keys(formData).forEach(key => {
-      updatedData.append(key, formData[key]);
-    });
-    
-    if (imageFile) {
-      updatedData.append('image', imageFile);
-    }
-    
-    if (sellerId) {
-      updatedData.append('seller', sellerId);
-    }
-    
-    onSave(updatedData);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="popup-form space-y-4 p-6 bg-white rounded-lg shadow-xl max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">
-        {mode === 'add' ? 'Add New Item' : 'Edit Item'}
-      </h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name*</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            className="form-input w-full"
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Base Price (₹)*</label>
-          <input
-            type="number"
-            name="base_price"
-            value={formData.base_price}
-            onChange={handleInputChange}
-            className="form-input w-full"
-            min="0"
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Type*</label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={handleInputChange}
-            className="form-input w-full"
-            required
-          >
-            <option value="Art">Art</option>
-            <option value="Antique">Antique</option>
-            <option value="Collectible">Collectible</option>
-            <option value="Jewelry">Jewelry</option>
-            <option value="Electronics">Electronics</option>
-          </select>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Seller*</label>
-          <select
-            value={sellerId}
-            onChange={(e) => setSellerId(e.target.value)}
-            className="form-input w-full"
-            required
-          >
-            <option value="">Select Seller</option>
-            {sellers.map(seller => (
-              <option key={seller._id} value={seller._id}>
-                {seller.name} ({seller.email})
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description*</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            className="form-input w-full"
-            rows="3"
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Auction Date*</label>
-          <input
-            type="date"
-            name="date"
-            value={formData.date}
-            onChange={handleInputChange}
-            className="form-input w-full"
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Start Time*</label>
-          <input
-            type="time"
-            name="StartTime"
-            value={formData.StartTime}
-            onChange={handleInputChange}
-            className="form-input w-full"
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">End Time*</label>
-          <input
-            type="time"
-            name="EndTime"
-            value={formData.EndTime}
-            onChange={handleInputChange}
-            className="form-input w-full"
-            required
-          />
-        </div>
-        
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Item Image*</label>
-          <input
-            type="file"
-            name="image"
-            onChange={handleImageChange}
-            accept="image/*"
-            className="block w-full text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-md file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-50 file:text-blue-700
-              hover:file:bg-blue-100"
-            required={mode === 'add'}
-          />
-          {imagePreview && (
-            <div className="mt-2">
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
-                className="h-40 object-contain rounded border border-gray-200" 
-              />
-              <p className="text-xs text-gray-500 mt-1">Image Preview</p>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex justify-end space-x-3 pt-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
-        >
-          {mode === 'add' ? 'Add Item' : 'Save Changes'}
-        </button>
-      </div>
-    </form>
-  );
-};
 const ItemsDashboard = () => {
   const [items, setItems] = useState([])
   const navigate = useNavigate()
@@ -254,9 +32,9 @@ const ItemsDashboard = () => {
     if (!admin) {
       navigate("/admin/login")
     }
+
     const fetchItems = async () => {
       try {
-        // Replace with your actual API endpoint
         const response = await fetch(`${process.env.REACT_APP_BACKENDURL}/admin/home`)
         const data = await response.json()
         setItems(data.data.items)
@@ -268,12 +46,11 @@ const ItemsDashboard = () => {
     }
 
     fetchItems()
-  }, [])
+  }, [navigate]) // ✅ added navigate
 
   const getFilteredItems = () => {
     let filtered = [...items]
 
-    // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(
@@ -284,11 +61,9 @@ const ItemsDashboard = () => {
       )
     }
 
-    // Sort the results
     filtered.sort((a, b) => {
       let valueA, valueB
 
-      // Determine which field to sort by
       switch (sortBy) {
         case "name":
           valueA = a.name || ""
@@ -315,7 +90,6 @@ const ItemsDashboard = () => {
           valueB = b.name || ""
       }
 
-      // Apply sort order
       if (sortOrder === "asc") {
         return valueA > valueB ? 1 : -1
       } else {
@@ -327,16 +101,6 @@ const ItemsDashboard = () => {
   }
 
   const filteredItems = getFilteredItems()
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A"
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date)
-  }
 
   const formatPrice = (price) => {
     if (!price) return "$0.00"
@@ -354,7 +118,6 @@ const ItemsDashboard = () => {
   const handleDeleteItem = async (itemId) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
-        // Replace with your actual API endpoint
         await fetch(`${process.env.REACT_APP_BACKENDURL}/delete/item/${itemId}`)
         setItems(items.filter((item) => item._id !== itemId))
       } catch (error) {
@@ -365,7 +128,6 @@ const ItemsDashboard = () => {
 
   const handleSaveEdit = async () => {
     try {
-      // Replace with your actual API endpoint
       await fetch(`${process.env.REACT_APP_BACKENDURL}/update/item/${editingItem._id}`, {
         method: "PUT",
         headers: {
@@ -374,7 +136,6 @@ const ItemsDashboard = () => {
         body: JSON.stringify(editingItem),
       })
 
-      // Update the local state
       setItems(items.map((item) => (item._id === editingItem._id ? editingItem : item)))
       setIsEditModalOpen(false)
     } catch (error) {
@@ -384,7 +145,6 @@ const ItemsDashboard = () => {
 
   const handleAddItem = async () => {
     try {
-      // Replace with your actual API endpoint
       const response = await fetch(`${process.env.REACT_APP_BACKENDURL}/add/item`, {
         method: "POST",
         headers: {
@@ -422,12 +182,9 @@ const ItemsDashboard = () => {
 
   return (
     <div className="flex min-h-screen">
-      {/* Sidebar */}
       <AdminNav />
 
-      {/* Main Content */}
       <div className={`flex-1 ${isSidebarOpen ? "ml-64" : "ml-0"} transition-margin duration-300 ease-in-out`}>
-        {/* Toggle Sidebar Button */}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="fixed top-4 left-4 z-40 p-2 rounded-md bg-white shadow-lg hover:bg-gray-100"
@@ -441,13 +198,9 @@ const ItemsDashboard = () => {
           </svg>
         </button>
 
-        {/* Content */}
         <div className="p-4 md:p-8">
-          
           <div className="max-w-7xl mx-auto">
-            
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              {/* Header */}
               <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-8 md:py-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between">
                   <div>
@@ -469,7 +222,6 @@ const ItemsDashboard = () => {
                 </div>
               </div>
 
-              {/* Search and Filter */}
               <div className="p-4 border-b bg-gray-50">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="relative flex-1">
@@ -535,73 +287,76 @@ const ItemsDashboard = () => {
                   </div>
                 )}
               </div>
-  <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-purple-100 p-3 rounded-lg">
-                      <Package className="h-6 w-6 text-purple-500" />
+
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 bg-purple-100 p-3 rounded-lg">
+                        <Package className="h-6 w-6 text-purple-500" />
+                      </div>
+                      <div className="ml-5">
+                        <h3 className="text-lg font-medium text-gray-900">Total Items</h3>
+                        <p className="text-gray-500 text-sm">All active items</p>
+                      </div>
                     </div>
-                    <div className="ml-5">
-                      <h3 className="text-lg font-medium text-gray-900">Total Items</h3>
-                      <p className="text-gray-500 text-sm">All active items</p>
+                    <div className="mt-4">
+                      <div className="flex items-baseline">
+                        <p className="text-3xl font-bold text-gray-900">{filteredItems.length}</p>
+                        <p className="ml-2 text-sm text-gray-500">items</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <div className="flex items-baseline">
-                      <p className="text-3xl font-bold text-gray-900">{filteredItems.length}</p>
-                      <p className="ml-2 text-sm text-gray-500">items</p>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 bg-green-100 p-3 rounded-lg">
+                        <Package className="h-6 w-6 text-green-500" />
+                      </div>
+                      <div className="ml-5">
+                        <h3 className="text-lg font-medium text-gray-900">Average Price</h3>
+                        <p className="text-gray-500 text-sm">Current average price</p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-baseline">
+                        <p className="text-3xl font-bold text-gray-900">
+                          {formatPrice(
+                            filteredItems.reduce((acc, item) => acc + Number.parseFloat(item.current_price || 0), 0) /
+                              (filteredItems.length || 1),
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 bg-blue-100 p-3 rounded-lg">
+                        <Package className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <div className="ml-5">
+                        <h3 className="text-lg font-medium text-gray-900">Total Value</h3>
+                        <p className="text-gray-500 text-sm">Sum of all current prices</p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-baseline">
+                        <p className="text-3xl font-bold text-gray-900">
+                          {formatPrice(
+                            filteredItems.reduce((acc, item) => acc + Number.parseFloat(item.current_price || 0), 0),
+                          )}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-green-100 p-3 rounded-lg">
-                      <Package className="h-6 w-6 text-green-500" />
-                    </div>
-                    <div className="ml-5">
-                      <h3 className="text-lg font-medium text-gray-900">Average Price</h3>
-                      <p className="text-gray-500 text-sm">Current average price</p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-baseline">
-                      <p className="text-3xl font-bold text-gray-900">
-                        {formatPrice(
-                          filteredItems.reduce((acc, item) => acc + Number.parseFloat(item.current_price || 0), 0) /
-                            (filteredItems.length || 1),
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-blue-100 p-3 rounded-lg">
-                      <Package className="h-6 w-6 text-blue-500" />
-                    </div>
-                    <div className="ml-5">
-                      <h3 className="text-lg font-medium text-gray-900">Total Value</h3>
-                      <p className="text-gray-500 text-sm">Sum of all current prices</p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-baseline">
-                      <p className="text-3xl font-bold text-gray-900">
-                        {formatPrice(filteredItems.reduce((acc, item) => acc + Number.parseFloat(item.current_price || 0), 0))}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-              {/* Items List */}
               <div className="overflow-x-auto">
                 {filteredItems.length === 0 ? (
                   <div className="text-center py-12">
@@ -619,10 +374,7 @@ const ItemsDashboard = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <div className="flex items-center">
                             Item
                             <button
@@ -636,10 +388,8 @@ const ItemsDashboard = () => {
                             </button>
                           </div>
                         </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
+
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <div className="flex items-center">
                             Seller
                             <button
@@ -653,10 +403,8 @@ const ItemsDashboard = () => {
                             </button>
                           </div>
                         </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
+
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <div className="flex items-center">
                             Base Price
                             <button
@@ -670,10 +418,8 @@ const ItemsDashboard = () => {
                             </button>
                           </div>
                         </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
+
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <div className="flex items-center">
                             Current Price
                             <button
@@ -687,20 +433,17 @@ const ItemsDashboard = () => {
                             </button>
                           </div>
                         </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
+
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Image
                         </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
+
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
+
                     <tbody className="bg-white divide-y divide-gray-200">
                       {filteredItems.map((item) => (
                         <tr key={item._id} className="hover:bg-gray-50">
@@ -712,15 +455,19 @@ const ItemsDashboard = () => {
                               </div>
                             </div>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{item.person}</div>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{formatPrice(item.base_price)}</div>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-green-600">{formatPrice(item.current_price)}</div>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <img
                               src={item.url || "/placeholder.svg"}
@@ -728,6 +475,7 @@ const ItemsDashboard = () => {
                               className="h-12 w-12 object-cover rounded-md"
                             />
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
                               <button
@@ -753,7 +501,6 @@ const ItemsDashboard = () => {
                 )}
               </div>
 
-              {/* Pagination placeholder */}
               <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
@@ -766,14 +513,10 @@ const ItemsDashboard = () => {
                 </div>
               </div>
             </div>
-
-            {/* Item Stats Cards */}
-          
           </div>
         </div>
       </div>
 
-      {/* Edit Item Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -854,7 +597,6 @@ const ItemsDashboard = () => {
         </div>
       )}
 
-      {/* Add Item Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">

@@ -1,5 +1,5 @@
 // SellerSoldItems.jsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -77,48 +77,7 @@ export default function SellerSoldItems() {
     };
   };
 
-  useEffect(() => {
-    const fetchSoldItems = async () => {
-      try {
-        if (!sellerid) return navigate("/seller");
-
-        const response = await axios.get(`${BACKEND}/sellerhome/${sellerid}`);
-
-        const sellerObj = response?.data?.seller;
-        const itemsRaw = response?.data?.items || [];
-        const soldRaw = sellerObj?.solditems || [];
-
-        setSeller(sellerObj || null);
-
-        const items = itemsRaw.map(normalizeItem).filter(Boolean);
-        const sold = soldRaw.map(normalizeItem).filter(Boolean);
-
-        // ✅ IMPORTANT FIX: auction_active spelling (and support aution_active)
-        const active = items.filter((i) => i.auction_active === true);
-        const unsold = items.filter((i) => i.auction_active === false);
-
-        setSoldItems(sold);
-        setActiveItems(active);
-        setUnsoldItems(unsold);
-
-        // Analytics from sold + unsold (active excluded from "successRate" unless you want)
-        calculateAnalytics(sold, unsold, active);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSoldItems();
-  }, [sellerid, navigate]);
-
-  const logout = () => {
-    Cookies.remove("seller");
-    navigate("/");
-  };
-
-  const processChartData = (soldItemsArr, filter) => {
+  const processChartData = useCallback((soldItemsArr, filter) => {
     const now = new Date();
     let timeSeriesData = [];
     let categoryData = [];
@@ -250,9 +209,9 @@ export default function SellerSoldItems() {
     }
 
     return { timeSeriesData, categoryData };
-  };
+  }, []);
 
-  const filterItemsByTime = (items, filter) => {
+  const filterItemsByTime = useCallback((items, filter) => {
     if (filter === "all") return items;
 
     const now = new Date();
@@ -279,43 +238,96 @@ export default function SellerSoldItems() {
       const itemDate = new Date(item.updatedAt || item.date || Date.now());
       return itemDate >= filterDate && itemDate <= now;
     });
+  }, []);
+
+  const calculateAnalytics = useCallback(
+    (sold, unsold, active, filter) => {
+      const totalSold = sold.length;
+      const totalUnsold = unsold.length;
+      const totalActive = active.length;
+
+      const totalRevenue = sold.reduce(
+        (sum, item) => sum + Number(item.current_price || 0),
+        0
+      );
+      const averageSoldPrice = totalSold > 0 ? totalRevenue / totalSold : 0;
+
+      // success rate: sold / (sold + unsold)  (active excluded)
+      const denom = totalSold + totalUnsold;
+      const successRate = denom > 0 ? (totalSold / denom) * 100 : 0;
+
+      const { timeSeriesData, categoryData } = processChartData(sold, filter);
+
+      setAnalytics({
+        totalSold,
+        totalUnsold,
+        totalActive,
+        totalRevenue,
+        averageSoldPrice,
+        successRate,
+        timeSeriesData,
+        categoryData,
+      });
+    },
+    [processChartData]
+  );
+
+  useEffect(() => {
+    const fetchSoldItems = async () => {
+      try {
+        if (!sellerid) return navigate("/seller");
+
+        const response = await axios.get(`${BACKEND}/sellerhome/${sellerid}`);
+
+        const sellerObj = response?.data?.seller;
+        const itemsRaw = response?.data?.items || [];
+        const soldRaw = sellerObj?.solditems || [];
+
+        setSeller(sellerObj || null);
+
+        const items = itemsRaw.map(normalizeItem).filter(Boolean);
+        const sold = soldRaw.map(normalizeItem).filter(Boolean);
+
+        // ✅ IMPORTANT FIX: auction_active spelling (and support aution_active)
+        const active = items.filter((i) => i.auction_active === true);
+        const unsold = items.filter((i) => i.auction_active === false);
+
+        setSoldItems(sold);
+        setActiveItems(active);
+        setUnsoldItems(unsold);
+
+        calculateAnalytics(sold, unsold, active, timeFilter);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSoldItems();
+  }, [sellerid, navigate, calculateAnalytics, timeFilter]);
+
+  const logout = () => {
+    Cookies.remove("seller");
+    navigate("/");
   };
 
-  const calculateAnalytics = (sold, unsold, active) => {
-    const totalSold = sold.length;
-    const totalUnsold = unsold.length;
-    const totalActive = active.length;
-
-    const totalRevenue = sold.reduce((sum, item) => sum + Number(item.current_price || 0), 0);
-    const averageSoldPrice = totalSold > 0 ? totalRevenue / totalSold : 0;
-
-    // success rate: sold / (sold + unsold)  (active excluded)
-    const denom = totalSold + totalUnsold;
-    const successRate = denom > 0 ? (totalSold / denom) * 100 : 0;
-
-    const { timeSeriesData, categoryData } = processChartData(sold, timeFilter);
-
-    setAnalytics({
-      totalSold,
-      totalUnsold,
-      totalActive,
-      totalRevenue,
-      averageSoldPrice,
-      successRate,
-      timeSeriesData,
-      categoryData,
-    });
-  };
-
-  // keep charts updated when timeFilter changes
+  // ✅ FIXED ESLINT: include calculateAnalytics in deps (now memoized)
   useEffect(() => {
     calculateAnalytics(
       filterItemsByTime(soldItems, timeFilter),
       filterItemsByTime(unsoldItems, timeFilter),
-      filterItemsByTime(activeItems, timeFilter)
+      filterItemsByTime(activeItems, timeFilter),
+      timeFilter
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeFilter]);
+  }, [
+    timeFilter,
+    soldItems,
+    unsoldItems,
+    activeItems,
+    filterItemsByTime,
+    calculateAnalytics,
+  ]);
 
   if (loading) {
     return (
@@ -371,7 +383,10 @@ export default function SellerSoldItems() {
         <h3 className="text-lg font-semibold mb-2">{chartTitle}</h3>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={analytics.timeSeriesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <AreaChart
+              data={analytics.timeSeriesData}
+              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
@@ -424,7 +439,10 @@ export default function SellerSoldItems() {
       <h3 className="text-lg font-semibold mb-2">Revenue vs Items Sold</h3>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={analytics.timeSeriesData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <BarChart
+            data={analytics.timeSeriesData}
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
             <YAxis yAxisId="left" orientation="left" />

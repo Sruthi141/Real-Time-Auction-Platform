@@ -5,7 +5,7 @@ import { Star, MessageSquare, User, Mail, AlertCircle, Calendar, ThumbsUp } from
 import { motion, AnimatePresence } from "framer-motion"
 import AdminNav from "./AdminNav"
 import Cookies from "js-cookie"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 const ReviewsDashboard = () => {
   const [feedbacks, setFeedbacks] = useState([])
@@ -15,20 +15,21 @@ const ReviewsDashboard = () => {
   const [selectedFeedback, setSelectedFeedback] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filterRating, setFilterRating] = useState(0) // 0 means no filter
+
   const navigate = useNavigate()
   const admin = Cookies.get("admin")
 
   useEffect(() => {
-
     if (!admin) {
       navigate("/admin/login")
+      return
     }
 
     const fetchFeedbacks = async () => {
       try {
-        // Replace with your actual API endpoint
         const response = await fetch(`${process.env.REACT_APP_BACKENDURL}/feedbacks`)
         const feedbackData = await response.json()
+
         setFeedbacks(feedbackData)
 
         // Calculate average rating
@@ -38,6 +39,8 @@ const ReviewsDashboard = () => {
             totalRating += feedback.Rating
           }
           setAverageRating((totalRating / feedbackData.length).toFixed(1))
+        } else {
+          setAverageRating(0)
         }
       } catch (error) {
         console.error("Error fetching feedbacks:", error)
@@ -46,18 +49,8 @@ const ReviewsDashboard = () => {
       }
     }
 
-    // Check for admin cookie
-    const checkAuth = () => {
-      const adminCookie = document.cookie.split(";").find((c) => c.trim().startsWith("admin="))
-      if (!adminCookie) {
-        // Redirect to login
-        window.location.href = "/admin/login"
-      }
-    }
-
-    checkAuth()
     fetchFeedbacks()
-  }, [])
+  }, [admin, navigate]) // ✅ fixed deps
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A"
@@ -67,11 +60,6 @@ const ReviewsDashboard = () => {
       month: "long",
       day: "numeric",
     })
-  }
-
-  const handleViewFeedback = (feedback) => {
-    setSelectedFeedback(feedback)
-    setIsModalOpen(true)
   }
 
   const getFilteredFeedbacks = () => {
@@ -160,7 +148,7 @@ const ReviewsDashboard = () => {
                     <div className="flex items-center justify-center">
                       <div className="text-center">
                         <div className="text-6xl font-bold text-purple-600 mb-2">{averageRating}</div>
-                        <div className="flex justify-center mb-2">{renderStars(Math.round(averageRating))}</div>
+                        <div className="flex justify-center mb-2">{renderStars(Math.round(Number(averageRating)))}</div>
                         <p className="text-gray-500">Based on {feedbacks.length} reviews</p>
                       </div>
                     </div>
@@ -175,11 +163,17 @@ const ReviewsDashboard = () => {
                           <div key={rating} className="flex items-center">
                             <button
                               onClick={() => setFilterRating(filterRating === rating ? 0 : rating)}
-                              className={`flex items-center space-x-1 min-w-[60px] ${filterRating === rating ? "text-purple-600 font-medium" : "text-gray-600"}`}
+                              className={`flex items-center space-x-1 min-w-[60px] ${
+                                filterRating === rating ? "text-purple-600 font-medium" : "text-gray-600"
+                              }`}
                             >
                               <span>{rating}</span>
                               <Star
-                                className={`h-4 w-4 ${filterRating === rating ? "fill-purple-600 text-purple-600" : "fill-gray-400 text-gray-400"}`}
+                                className={`h-4 w-4 ${
+                                  filterRating === rating
+                                    ? "fill-purple-600 text-purple-600"
+                                    : "fill-gray-400 text-gray-400"
+                                }`}
                               />
                             </button>
                             <div className="flex-1 mx-3">
@@ -237,7 +231,11 @@ const ReviewsDashboard = () => {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                      className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => {
+                        setSelectedFeedback(feedback)
+                        setIsModalOpen(true)
+                      }}
                     >
                       <div className="p-5">
                         <div className="flex justify-between items-start mb-3">
@@ -265,7 +263,6 @@ const ReviewsDashboard = () => {
                         </div>
 
                         <p className="text-sm text-gray-600 line-clamp-3 mb-3">{feedback.Feedback}</p>
-
                       </div>
                     </motion.div>
                   ))

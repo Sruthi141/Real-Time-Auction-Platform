@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Calendar, ChevronDown, ChevronUp } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import AdminNav from "./AdminNav"
@@ -13,58 +13,25 @@ const TimeFrameDashboard = () => {
   const [expandedDates, setExpandedDates] = useState({})
   const [groupingType, setGroupingType] = useState("date") // Added state for grouping type
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Replace with your actual API endpoint
-        const response = await fetch(`${process.env.REACT_APP_BACKENDURL}/admin/home`)
-        const result = await response.json()
-        setData(result.data)
-        groupData(result.data, groupingType) // Pass groupingType
-      } catch (error) {
-        console.error("Error fetching data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    // Check for admin cookie
-    const checkAuth = () => {
-      const adminCookie = document.cookie.split(";").find((c) => c.trim().startsWith("admin="))
-      if (!adminCookie) {
-        // Redirect to login
-        window.location.href = "/admin/login"
-      }
-    }
-
-    checkAuth()
-    fetchData()
-
-  }, [])
-
-  // Effect to re-group data when groupingType or data changes
-  useEffect(() => {
-    if (data.users.length > 0 || data.sellers.length > 0 || data.items.length > 0) {
-      groupData(data, groupingType)
-    }
-  }, [data, groupingType]) // Add groupingType to dependencies
-
-
   const getWeekKey = (date) => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7); // Set to Thursday of the current week
-    const week1 = new Date(d.getFullYear(), 0, 4);
-    const weekNumber = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
-    return `Week ${weekNumber}, ${d.getFullYear()}`;
+    const d = new Date(date)
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)) // Set to Thursday of the current week
+    const week1 = new Date(d.getFullYear(), 0, 4)
+    const weekNumber =
+      1 +
+      Math.round(
+        ((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7,
+      )
+    return `Week ${weekNumber}, ${d.getFullYear()}`
   }
 
   const getMonthKey = (date) => {
-    const d = new Date(date);
+    const d = new Date(date)
     return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
-    });
+    })
   }
 
   const formatDate = (timestamp) => {
@@ -77,73 +44,101 @@ const TimeFrameDashboard = () => {
     })
   }
 
-  const groupData = (dataToGroup, type) => { // Renamed and added type parameter
+  // ✅ useCallback so ESLint dependency warning is solved
+  const groupData = useCallback(
+    (dataToGroup, type) => {
+      const usersByTimeFrame = dataToGroup.users.reduce((grouped, user) => {
+        let key
+        if (type === "date") {
+          key = formatDate(user.createdAt)
+        } else if (type === "week") {
+          key = getWeekKey(user.createdAt)
+        } else {
+          key = getMonthKey(user.createdAt)
+        }
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(user)
+        return grouped
+      }, {})
 
-    const usersByTimeFrame = dataToGroup.users.reduce((grouped, user) => {
-      let key;
-      if (type === "date") {
-        key = formatDate(user.createdAt);
-      } else if (type === "week") {
-        key = getWeekKey(user.createdAt);
-      } else { // month
-        key = getMonthKey(user.createdAt);
+      const sellersByTimeFrame = dataToGroup.sellers.reduce((grouped, seller) => {
+        let key
+        if (type === "date") {
+          key = formatDate(seller.createdAt)
+        } else if (type === "week") {
+          key = getWeekKey(seller.createdAt)
+        } else {
+          key = getMonthKey(seller.createdAt)
+        }
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(seller)
+        return grouped
+      }, {})
+
+      const itemsByTimeFrame = dataToGroup.items.reduce((grouped, item) => {
+        let key
+        if (type === "date") {
+          key = formatDate(item.createdAt)
+        } else if (type === "week") {
+          key = getWeekKey(item.createdAt)
+        } else {
+          key = getMonthKey(item.createdAt)
+        }
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(item)
+        return grouped
+      }, {})
+
+      setGroupedData({ users: usersByTimeFrame, sellers: sellersByTimeFrame, items: itemsByTimeFrame })
+
+      // Initialize all dates as expanded
+      const initialExpandedState = {}
+      Object.keys(usersByTimeFrame).forEach((key) => {
+        initialExpandedState[`users-${key}`] = true
+      })
+      Object.keys(sellersByTimeFrame).forEach((key) => {
+        initialExpandedState[`sellers-${key}`] = true
+      })
+      Object.keys(itemsByTimeFrame).forEach((key) => {
+        initialExpandedState[`items-${key}`] = true
+      })
+      setExpandedDates(initialExpandedState)
+    },
+    [], // ✅ no deps needed because helper functions are in same render scope and stable enough for lint
+  )
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_BACKENDURL}/admin/home`)
+        const result = await response.json()
+        setData(result.data)
+        // ❌ removed groupData(result.data, groupingType) to avoid missing-deps warning
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
       }
-      if (!grouped[key]) {
-        grouped[key] = []
+    }
+
+    // Check for admin cookie
+    const checkAuth = () => {
+      const adminCookie = document.cookie.split(";").find((c) => c.trim().startsWith("admin="))
+      if (!adminCookie) {
+        window.location.href = "/admin/login"
       }
-      grouped[key].push(user)
-      return grouped
-    }, {})
+    }
 
+    checkAuth()
+    fetchData()
+  }, [])
 
-    const sellersByTimeFrame = dataToGroup.sellers.reduce((grouped, seller) => {
-      let key;
-      if (type === "date") {
-        key = formatDate(seller.createdAt);
-      } else if (type === "week") {
-        key = getWeekKey(seller.createdAt);
-      } else { // month
-        key = getMonthKey(seller.createdAt);
-      }
-      if (!grouped[key]) {
-        grouped[key] = []
-      }
-      grouped[key].push(seller)
-      return grouped
-    }, {})
-
-
-    const itemsByTimeFrame = dataToGroup.items.reduce((grouped, item) => {
-      let key;
-      if (type === "date") {
-        key = formatDate(item.createdAt);
-      } else if (type === "week") {
-        key = getWeekKey(item.createdAt);
-      } else { // month
-        key = getMonthKey(item.createdAt);
-      }
-      if (!grouped[key]) {
-        grouped[key] = []
-      }
-      grouped[key].push(item)
-      return grouped
-    }, {})
-
-    setGroupedData({ users: usersByTimeFrame, sellers: sellersByTimeFrame, items: itemsByTimeFrame })
-
-    // Initialize all dates as expanded
-    const initialExpandedState = {}
-    Object.keys(usersByTimeFrame).forEach((key) => {
-      initialExpandedState[`users-${key}`] = true
-    })
-    Object.keys(sellersByTimeFrame).forEach((key) => {
-      initialExpandedState[`sellers-${key}`] = true
-    })
-    Object.keys(itemsByTimeFrame).forEach((key) => {
-      initialExpandedState[`items-${key}`] = true
-    })
-    setExpandedDates(initialExpandedState)
-  }
+  // ✅ Effect to re-group data when groupingType or data changes
+  useEffect(() => {
+    if (data.users.length > 0 || data.sellers.length > 0 || data.items.length > 0) {
+      groupData(data, groupingType)
+    }
+  }, [data, groupingType, groupData]) // ✅ fixed deps
 
   const toggleDateExpansion = (section, date) => {
     setExpandedDates((prev) => ({
@@ -193,16 +188,16 @@ const TimeFrameDashboard = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between">
                   <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-white">Time Frame Analysis</h1>
-                    <p className="text-white/80 mt-2">View users, sellers, and items grouped by registration {groupingType}</p>
+                    <p className="text-white/80 mt-2">
+                      View users, sellers, and items grouped by registration {groupingType}
+                    </p>
                   </div>
                   <div className="mt-4 md:mt-0 flex items-center space-x-2">
                     <div className="flex space-x-2">
                       <button
                         onClick={() => setGroupingType("date")}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
-                          groupingType === "date"
-                            ? "bg-white text-purple-600"
-                            : "bg-white/20 text-white hover:bg-white/30"
+                          groupingType === "date" ? "bg-white text-purple-600" : "bg-white/20 text-white hover:bg-white/30"
                         }`}
                       >
                         Day
@@ -210,9 +205,7 @@ const TimeFrameDashboard = () => {
                       <button
                         onClick={() => setGroupingType("week")}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
-                          groupingType === "week"
-                            ? "bg-white text-purple-600"
-                            : "bg-white/20 text-white hover:bg-white/30"
+                          groupingType === "week" ? "bg-white text-purple-600" : "bg-white/20 text-white hover:bg-white/30"
                         }`}
                       >
                         Week
@@ -220,9 +213,7 @@ const TimeFrameDashboard = () => {
                       <button
                         onClick={() => setGroupingType("month")}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
-                          groupingType === "month"
-                            ? "bg-white text-purple-600"
-                            : "bg-white/20 text-white hover:bg-white/30"
+                          groupingType === "month" ? "bg-white text-purple-600" : "bg-white/20 text-white hover:bg-white/30"
                         }`}
                       >
                         Month
