@@ -1,14 +1,10 @@
-import { Link } from "react-router-dom";
-import './Landing.css';  // Import the CSS file
-import { motion } from 'framer-motion';
-import { Gavel , ArrowRight } from 'lucide-react';
+import "./Landing.css"; // Import the CSS file
 import { Navbar } from "./LandingComponents/NavBAr";
-import Hero from './LandingComponents/Hero'
+import Hero from "./LandingComponents/Hero";
 import { Features } from "./LandingComponents/Features";
 import FeedBack from "./LandingComponents/FeedBack";
 
-//landing page
-
+// landing page
 export default function Component() {
   return (
     <div className="min-h-screen">
@@ -16,10 +12,8 @@ export default function Component() {
       <main>
         <Hero />
         <Features />
-        <FeedBack/>
+        <FeedBack />
       </main>
     </div>
   );
 }
-
-
