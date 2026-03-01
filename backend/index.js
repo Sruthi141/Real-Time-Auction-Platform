@@ -42,29 +42,35 @@ const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.1.0/swagger
 // CORS MUST BE FIRST - before any routes!
 // ============================================
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:4000',
-  'https://real-time-auction-platform-sruthi.vercel.app',
-  'https://fdfed-2-server.vercel.app'
+  "http://localhost:3000",
+  "http://localhost:4000",
+  "https://real-time-auction-platform-sruthi.vercel.app",
+  "https://fdfed-2-server.vercel.app",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, Postman, curl)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // allow server-to-server / Postman
+      if (!origin) return cb(null, true);
 
-// Handle preflight requests explicitly
-app.options('*', cors());
+      // allow exact domains
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+
+      // allow vercel preview deployments (optional but helpful)
+      if (/^https:\/\/.*\.vercel\.app$/.test(origin)) return cb(null, true);
+
+      // IMPORTANT: don't throw error (prevents 500 on OPTIONS)
+      return cb(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+// Preflight
+app.options("*", cors());
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
