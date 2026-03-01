@@ -19,32 +19,43 @@ export default function Component() {
     }
   }, [user, navigate]);
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${process.env.REACT_APP_BACKENDURL}/login`, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        const data = JSON.parse(xhr.responseText);
-        if (xhr.status === 200 && data.message === "Login Successfully") {
-          Cookies.set("user", data.userId);
-          navigate("/home");
-        } else {
-          seterrormsg(data.message);
-        }
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  try {
+    seterrormsg("");
+
+    const res = await axios.post(
+      `${process.env.REACT_APP_BACKENDURL}/login`,
+      { email, password },
+      {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true, // ✅ important if backend uses cookies
       }
-    };
-    xhr.onerror = function () {
-      seterrormsg("An error occurred during the login process.");
-    };
-    xhr.send(JSON.stringify({ email, password }));
-  };
+    );
+
+    const data = res.data;
+
+    if (data?.message === "Login Successfully") {
+      Cookies.set("user", data.userId);
+      navigate("/home");
+    } else {
+      seterrormsg(data?.message || "Login failed");
+    }
+  } catch (err) {
+    console.error(err);
+    seterrormsg(
+      err?.response?.data?.message ||
+      err?.message ||
+      "An error occurred during the login process."
+    );
+  }
+};
 
   const responseGoogle = async (authResult) => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_BACKENDURL}/auth/google`, {
-        params: { tokens: authResult }
+        params: { tokens: authResult },
+        withCredentials: true,
       });
       if (response.status === 200) {
         Cookies.set("user", response.data.userId);
